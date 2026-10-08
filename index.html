@@ -372,11 +372,10 @@ body.on-start .wrap{padding-top:0}
 <div id="shareModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="shTitle" hidden>
   <div class="sheet">
     <h3 id="shTitle">결과 공유하기</h3>
-    <p class="sub">이미지를 저장해서 카카오톡에 보내거나, 링크를 복사해 주세요.</p>
+    <p class="sub">이미지를 저장해서 카카오톡으로 보내 주세요.</p>
     <img id="shImg" alt="내 직장 유형 결과 이미지" style="width:100%;border-radius:12px;border:1px solid var(--line);margin-bottom:12px">
     <div class="shbtns">
       <a class="btn primary" id="shSave" download="업무짝꿍_결과.png" href="#">이미지 저장</a>
-      <button class="btn ghost" id="shLink">링크 복사</button>
       <button class="btn ghost" id="shClose">닫기</button>
     </div>
   </div>
@@ -728,7 +727,6 @@ $('mClose').onclick = () => { $('matchModal').hidden = true; };
 $('matchModal').addEventListener('click', e => { if(e.target.id==='matchModal') $('matchModal').hidden = true; });
 
 // ===== 공유하기: 직장 유형 결과를 이미지 카드로 만들어 공유 =====
-const SITE_URL = 'https://bc9nz85tzm-stack.github.io/Kj/';
 const FONT = '"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif';
 function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 function wrapWords(ctx,text,x,y,maxW,lh){
@@ -823,9 +821,8 @@ async function doShare(){
   try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
   const blob = await cardBlob();
   const file = new File([blob],'업무짝꿍_결과.png',{type:'image/png'});
-  const text = '숨은 업무짝꿍 찾기🔍 ' + SITE_URL;
   if(navigator.canShare && navigator.canShare({files:[file]})){
-    try{ await navigator.share({files:[file],title:'숨은 업무짝꿍 찾기',text}); return; }
+    try{ await navigator.share({files:[file]}); return; }
     catch(e){ if(e && e.name==='AbortError') return; }
   }
   const url = URL.createObjectURL(blob);
@@ -833,7 +830,6 @@ async function doShare(){
   $('shareModal').hidden = false;
 }
 $('btnShare').onclick = doShare;
-$('shLink').onclick = () => copyText(SITE_URL).then(()=>toast('링크를 복사했어요')).catch(()=>toast('링크를 길게 눌러 복사해 주세요'));
 $('shClose').onclick = () => { $('shareModal').hidden = true; };
 $('shareModal').addEventListener('click',e=>{ if(e.target.id==='shareModal') $('shareModal').hidden=true; });
 
