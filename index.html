@@ -321,7 +321,7 @@ body.on-start .wrap{padding-top:0}
         <option>행정지원팀</option>
         <option>보험급여부</option>
         <option>자격징수부</option>
-        <option>장기요양</option>
+        <option>장기요양센터</option>
       </select>
     </div>
     <p class="note">※ 문항마다 ‘최고’ 하나, ‘최소’ 하나를 골라 주세요.</p>
@@ -739,68 +739,69 @@ function wrapWords(ctx,text,x,y,maxW,lh){
   return y;
 }
 function makeCard(){
-  const gr=resData.graphs[0], tp=gr.type, info=INFO[tp];
-  const W=1080,H=1700, c=document.createElement('canvas'); c.width=W; c.height=H;
-  const g=c.getContext('2d');
-  g.fillStyle='#fafafa'; g.fillRect(0,0,W,H);
-  g.textBaseline='alphabetic';
-  // header
-  g.fillStyle='#111'; g.font='800 40px '+FONT; g.fillText('숨은 업무짝꿍 찾기🔍',80,100);
-  g.fillStyle='#77756d'; g.font='500 34px '+FONT; g.fillText(person.dept+' · '+person.name,80,155);
-  g.fillStyle='#e3e2dc'; g.fillRect(80,190,W-160,3);
-  // type
-  g.fillStyle='#77756d'; g.font='600 38px '+FONT; g.fillText('직장에서의 나',80,262);
-  g.font='130px '+FONT; g.fillStyle='#111'; g.fillText(ANIMAL[tp],80,420);
-  g.font='800 112px '+FONT; g.fillText(tp+'유형',260,385);
-  g.fillStyle='#77756d'; g.font='600 48px '+FONT; g.fillText(info.name,264,448);
-  // graph
-  const gx=150, gw=W-80-gx-20, gy=560, rh=48, cw=gw/4;
-  g.fillStyle='#edf0ff'; g.fillRect(gx,gy+rh*3,gw,rh);
-  g.strokeStyle='#cfcdc5'; g.lineWidth=2; g.setLineDash([10,8]);
-  for(let l=7;l>=1;l--){
-    const y=gy+(7-l)*rh;
-    g.fillStyle='#77756d'; g.font='500 28px '+FONT; g.textAlign='right'; g.fillText(l,gx-24,y+rh/2+10);
-    g.beginPath(); g.moveTo(gx,y); g.lineTo(gx+gw,y); g.stroke();
-  }
-  g.setLineDash([]); g.textAlign='center';
-  const pts=gr.pts.map((p,i)=>({x:gx+cw*(i+.5),y:gy+(7-p.lv)*rh+rh/2,p}));
-  pts.forEach(q=>{
-    g.strokeStyle='#e3e2dc'; g.lineWidth=2; g.beginPath(); g.moveTo(q.x,gy); g.lineTo(q.x,gy+rh*7); g.stroke();
-    g.fillStyle=(q.p.k===tp)?'#2540f5':'#111'; g.font='800 40px '+FONT; g.fillText(q.p.k,q.x,gy-24);
+  const gs=resData.graphs, main=gs[0], tp=main.type, info=INFO[tp];
+  const W=1080, CX=60, CW=960, PX=116, PW=848;
+  const c=document.createElement('canvas'); c.width=W; c.height=2600;
+  const g=c.getContext('2d'); g.textBaseline='alphabetic';
+  // 헤더
+  g.textAlign='left'; g.fillStyle='#111'; g.font='800 36px '+FONT; g.fillText('숨은 업무짝꿍 찾기🔍',PX,150);
+  g.textAlign='right'; g.fillStyle='#77756d'; g.font='500 30px '+FONT; g.fillText(person.dept+' · '+person.name,PX+PW,150);
+  g.fillStyle='#e3e2dc'; g.fillRect(PX,186,PW,2);
+  // 세 가지 결과 나란히
+  const labels=['직장','일상','추구미'], colors=['#0b8a73','#d93a26','#2540f5'];
+  const colW=270, gap=(PW-colW*3)/2, y0=236, colH=452;
+  gs.forEach((gr,i)=>{
+    const x0=PX+i*(colW+gap), isMain=i===0, t=gr.type, cx=x0+colW/2;
+    g.fillStyle=isMain?'#e8ecff':'#f7f7f4'; rr(g,x0,y0,colW,colH,28); g.fill();
+    if(isMain){ g.strokeStyle='#2540f5'; g.lineWidth=4; rr(g,x0+2,y0+2,colW-4,colH-4,26); g.stroke(); }
+    g.textAlign='center';
+    g.fillStyle=isMain?'#2540f5':'#77756d'; g.font='700 30px '+FONT; g.fillText(labels[i],cx,y0+58);
+    g.fillStyle='#111'; g.font='84px '+FONT; g.fillText(ANIMAL[t],cx,y0+158);
+    g.font='800 46px '+FONT; g.fillText(t+'유형',cx,y0+226);
+    g.fillStyle=isMain?'#2540f5':'#77756d'; g.font='600 28px '+FONT; g.fillText(INFO[t].name,cx,y0+268);
+    // 미니 그래프
+    const gx=x0+36, gw=colW-72, gy=y0+298, rh=14, cw=gw/4, base=gy+rh*7;
+    g.strokeStyle='#cfcdc5'; g.lineWidth=2; g.beginPath(); g.moveTo(gx,base+8); g.lineTo(gx+gw,base+8); g.stroke();
+    const pts=gr.pts.map((p,k)=>({x:gx+cw*(k+.5),y:gy+(7-p.lv)*rh+rh/2,p}));
+    g.strokeStyle=colors[i]; g.lineWidth=4; g.lineJoin='round'; g.beginPath();
+    pts.forEach((q,k)=>k?g.lineTo(q.x,q.y):g.moveTo(q.x,q.y)); g.stroke();
+    pts.forEach(q=>{
+      const m=q.p.k===t;
+      g.fillStyle=m?colors[i]:'#fff'; g.strokeStyle=colors[i]; g.lineWidth=3;
+      g.beginPath(); g.arc(q.x,q.y,m?8:5,0,Math.PI*2); g.fill(); g.stroke();
+      g.fillStyle=m?colors[i]:'#77756d'; g.font=(m?'800 24px ':'600 22px ')+FONT; g.fillText(q.p.k,q.x,base+42);
+    });
   });
-  g.strokeStyle='#111'; g.lineWidth=5; g.beginPath(); g.moveTo(gx,gy); g.lineTo(gx,gy+rh*7); g.lineTo(gx+gw,gy+rh*7); g.stroke();
-  g.strokeStyle='#0b8a73'; g.lineWidth=7; g.lineJoin='round'; g.beginPath();
-  pts.forEach((q,i)=>i?g.lineTo(q.x,q.y):g.moveTo(q.x,q.y)); g.stroke();
-  pts.forEach(q=>{
-    g.fillStyle='#0b8a73'; g.beginPath(); g.arc(q.x,q.y,14,0,Math.PI*2); g.fill();
-    g.strokeStyle='#fff'; g.lineWidth=4; g.stroke();
-    g.fillStyle='#111'; g.font='700 28px '+FONT; g.fillText(q.p.raw,q.x+30,q.y-16);
-  });
-  g.textAlign='left';
-  // description
-  let y=gy+rh*7+90;
-  g.fillStyle='#111'; g.font='500 36px '+FONT;
-  y=wrapWords(g,info.d,80,y,W-160,56);
-  // keywords
-  y+=14; let x=80; g.font='700 30px '+FONT;
+  // 설명: 직장 유형만
+  let y=y0+colH+84;
+  g.textAlign='left'; g.fillStyle='#77756d'; g.font='600 28px '+FONT; g.fillText('직장 유형 설명',PX,y);
+  y+=76; g.fillStyle='#111'; g.font='800 60px '+FONT; const tw=g.measureText(tp+'유형').width; g.fillText(tp+'유형',PX,y);
+  g.font='700 32px '+FONT; const nw=g.measureText(info.name).width+48;
+  g.fillStyle='#2540f5'; rr(g,PX+tw+22,y-46,nw,54,27); g.fill();
+  g.fillStyle='#fff'; g.fillText(info.name,PX+tw+22+24,y-8);
+  g.fillStyle='#2b2a26'; g.font='500 34px '+FONT;
+  y=wrapWords(g,info.d,PX,y+68,PW,56);
+  y+=34; let x=PX; g.font='700 29px '+FONT;
   info.keys.forEach(k=>{
     const w=g.measureText(k).width+44;
-    if(x+w>W-80){x=80;y+=68;}
-    g.fillStyle='#e8ecff'; rr(g,x,y-40,w,56,28); g.fill();
+    if(x+w>PX+PW){x=PX;y+=68;}
+    g.fillStyle='#e8ecff'; rr(g,x,y-38,w,54,27); g.fill();
     g.fillStyle='#2540f5'; g.fillText(k,x+22,y);
-    x+=w+14;
+    x+=w+12;
   });
-  y+=88;
-  // good types
-  g.fillStyle='#77756d'; g.font='600 32px '+FONT; g.fillText('잘 맞는 유형',80,y);
-  g.fillStyle='#111'; g.font='800 40px '+FONT;
-  g.fillText(FIT[tp].good.map(t=>INFO[t.t].name+'('+t.t+')').join('  ·  '),80,y+58);
-  // 내용 높이에 맞게 자르기
-  const endY=y+58+80;
-  const out=document.createElement('canvas'); out.width=W; out.height=endY;
-  const o=out.getContext('2d'); o.fillStyle='#fafafa'; o.fillRect(0,0,W,endY); o.drawImage(c,0,0);
+  y+=58;
+  g.fillStyle='#f4f6ff'; rr(g,PX,y,PW,150,28); g.fill();
+  g.fillStyle='#77756d'; g.font='600 28px '+FONT; g.fillText('잘 맞는 유형',PX+36,y+54);
+  g.fillStyle='#111'; g.font='800 38px '+FONT;
+  g.fillText(FIT[tp].good.map(t=>INFO[t.t].name+'('+t.t+')').join('   ·   '),PX+36,y+112);
+  const cardH=y+150+56-60;
+  const out=document.createElement('canvas'); out.width=W; out.height=cardH+120;
+  const o=out.getContext('2d'); o.fillStyle='#f1f0eb'; o.fillRect(0,0,W,out.height);
+  o.fillStyle='#fff'; rr(o,CX,60,CW,cardH,40); o.fill(); o.strokeStyle='#e3e2dc'; o.lineWidth=2; o.stroke();
+  o.drawImage(c,0,0);
   return out;
 }
+
 function legacyCopy(txt){
   return new Promise((res,rej)=>{
     const ta=document.createElement('textarea'); ta.value=txt; ta.setAttribute('readonly','');
