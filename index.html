@@ -299,6 +299,10 @@ body.on-start .wrap{padding-top:0}
 .btn.go:active{background:#1a31d4;transform:none}
 @keyframes wiggle{0%,60%,100%{transform:rotate(0)}70%{transform:rotate(-14deg)}80%{transform:rotate(10deg)}90%{transform:rotate(-6deg)}}
 @media (prefers-reduced-motion:reduce){.start .dk .mag{animation:none}}
+
+.start .dk .lookup{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:14px;padding:20px 26px;background:transparent;color:#111;border:1.5px solid #111;border-radius:0;font:inherit;font-size:1.05rem;font-weight:700;text-align:left;cursor:pointer}
+.start .dk .lookup b{font-size:1.3rem;font-weight:400;line-height:1}
+.start .dk .lookup:disabled{opacity:.5;cursor:default}
 @media print{.acts{display:none}body{background:#fff}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -328,6 +332,7 @@ body.on-start .wrap{padding-top:0}
     <label class="consent" id="consentBox" hidden><input type="checkbox" id="consent"> <span>내 이름, 부서, 검사 유형이 동료에게 공유되는 것에 동의해요.</span></label>
     <div class="err" id="err" role="alert"></div>
     <button class="btn go block" id="btnStart"><span>시작</span><b aria-hidden="true">↘</b></button>
+    <button class="lookup" id="btnLookup" type="button"><span>이미 검사했어요 · 내 결과 보기</span><b aria-hidden="true">↗</b></button>
   </div>
 </section>
 
@@ -573,6 +578,9 @@ function compute(){
   const most={}, least={};
   SYMS.forEach(s=>{most[s]=0;least[s]=0;});
   ans.forEach((a,i)=>{ most[ITEMS[i][a.m][1]]++; least[ITEMS[i][a.l][2]]++; });
+  return computeFrom(most,least);
+}
+function computeFrom(most,least){
   const out = {most,least,graphs:[]};
   GRAPHS.forEach(g=>{
     const pts = LETTERS.map(L=>{
@@ -653,13 +661,43 @@ function confetti(){
     document.body.appendChild(e); setTimeout(()=>e.remove(),3600);
   }
 }
-function showResult(){
-  resData = compute(); curTab = 0;
+function showResult(pre){
+  resData = pre || compute(); curTab = 0;
   $('meta').textContent = person.dept + ' · ' + person.name;
   renderResult();
   show('s-r');
-  sendResult();
+  if(!pre){ saveLocal(); sendResult(); }   // 새로 검사했을 때만 저장·전송
 }
+
+// ===== 내 결과 다시 보기 =====
+const LS_KEY = 'disc_my_result', ORDER5 = ['Z','□','▲','★','N'];
+const toArr = o => ORDER5.map(k=>o[k]);
+const toObj = a => { const o={}; ORDER5.forEach((k,i)=>o[k]=+a[i]||0); return o; };
+function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({name:person.name,dept:person.dept,most:toArr(resData.most),least:toArr(resData.least)})); }catch(e){} }
+function loadLocal(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){ return null; } }
+(function prefill(){
+  const loc=loadLocal(); if(!loc) return;
+  $('name').value=loc.name||'';
+  const opt=[...$('dept').options].find(o=>o.value===loc.dept||o.text===loc.dept); if(opt) $('dept').value=opt.value||opt.text;
+})();
+$('btnLookup').onclick = async () => {
+  const name=$('name').value.trim(), dept=$('dept').value.trim(), err=$('err'), btn=$('btnLookup');
+  if(!name || !dept){ err.textContent = !name && !dept ? '이름을 입력하고 부서를 선택해 주세요.' : (!name ? '이름을 입력해 주세요.' : '부서를 선택해 주세요.'); return; }
+  err.textContent=''; person={name,dept}; $('who').textContent=dept+' '+name;
+  const loc=loadLocal();                      // 1) 이 폰에 저장된 결과
+  if(loc && loc.name===name && loc.dept===dept){ showResult(computeFrom(toObj(loc.most),toObj(loc.least))); return; }
+  if(!SHEET_URL){ err.textContent='저장된 결과가 없어요.'; return; }
+  const label=btn.innerHTML; btn.disabled=true; btn.innerHTML='<span>결과를 찾는 중이에요…</span>';
+  try{                                         // 2) 구글 시트에서 찾기
+    const res=await fetch(SHEET_URL+'?action=get&key='+encodeURIComponent(SHEET_KEY)+'&name='+encodeURIComponent(name)+'&dept='+encodeURIComponent(dept));
+    const j=await res.json();
+    if(j.ok && j.found){ showResult(computeFrom(toObj(j.most),toObj(j.least))); }
+    else if(j.ok && j.found===false){ err.textContent='저장된 결과를 찾지 못했어요. 이름과 부서를 다시 확인해 주세요.'; }
+    else if(j.ok){ err.textContent='결과 조회 기능이 아직 켜지지 않았어요. 관리자에게 문의해 주세요.'; }
+    else { err.textContent='결과를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'; }
+  }catch(e){ err.textContent='인터넷 연결을 확인하고 다시 시도해 주세요.'; }
+  finally{ btn.disabled=false; btn.innerHTML=label; }
+};
 
 // ===== 구글 시트 연결 설정 =====
 // Apps Script 웹 앱 주소와 비밀번호를 넣으면 결과가 자동으로 모여요. 비워두면 이 기기 안에서만 동작해요.
